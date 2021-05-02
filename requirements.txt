@@ -5,3 +5,7 @@ PyQt5-sip==12.8.1
 pytesseract==0.3.4
 py-notifier==0.1.1
 win10toast==0.9; platform_system == "Windows"
+opencv-python==4.5.1
+opencv-contrib-python==4.5.1
+numpy==1.19.2
+imutils==0.5.4

@@ -15,7 +15,19 @@ This tool gives users the ability to take a screenshot and copy to the clipboard
 
 Running `textshot.py` with `python`/`python3` will open an overlay over the screen, where a rectangle can be drawn over the portion of the screen containing the text the user wishes to copy.
 
-An optional command line argument can specify the language. For example, `python textshot.py eng+fra` will use English as the primary language and French as the secondary language. The default is `eng` (English). Make sure that the appropriate data files for Tesseract are installed for other languages. A list of all supported languages can be found [here](https://github.com/tesseract-ocr/tesseract/blob/master/doc/tesseract.1.asc#languages-and-scripts).
+An optional command line argument can specify the language. For example, ~~`python textshot.py eng+fra`~~ `python textshot.py -l eng+fra` will use English as the primary language and French as the secondary language. The default is ~~`eng`~~ `eng+chi_sim` (English and Chinese Simplified). Make sure that the appropriate data files for Tesseract are installed for other languages. A list of all supported languages can be found [here](https://github.com/tesseract-ocr/tesseract/blob/master/doc/tesseract.1.asc#languages-and-scripts).
+
+<u>
+此外，为了解决原项目难以识别自然场景图片中的文字的问题，使用了OpenCV EAST文本检测器执行文本检测，该模型是一个高度准确的深度学习文本检测器，可用于检测自然场景图像中的文本。新增了两个命令行参数：
+</u>
+
+<u>
+
++ `-s 0/1`: scene默认为0，即原项目的标准情景下。1则为自然场景。
+
++ `-p 0.02`: padding默认为0.0，即对用OpenCV提取的ROI不进行填充。如果识别效果不好，可以尝试修改padding。
+
+</u>
 
 It is recommended to attach a global hotkey to this tool so you can run it without opening a console and typing in the command.
 

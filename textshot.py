@@ -1,7 +1,17 @@
-#!/usr/bin/env python3
+# 此项目在开源项目上进行开发
+# 原项目地址：https://github.com/ianzhao05/textshot
+
+# USAGE
+# python text_shot.py [-l eng+chi_sim] [-s 1] [-p 0.05]
+
 
 import io
 import sys
+
+import cv2
+import numpy as np
+import argparse
+from imutils.object_detection import non_max_suppression
 
 import pyperclip
 import pytesseract
@@ -13,6 +23,15 @@ try:
     from pynotifier import Notification
 except ImportError:
     pass
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-l", "--language", type = str, default = "eng+chi_sim", 
+                help = "language to recognize")
+ap.add_argument("-s", "--scene", type = int, default = 0,
+                help = "scene to recognize image. 0 as standard scene; 1 as natural scene")
+ap.add_argument("-p", "--padding", type = float, default = 0.0, 
+                help = "amount of padding to add to each border of ROI")
+args = vars(ap.parse_args())
 
 
 class Snipper(QtWidgets.QWidget):
@@ -74,27 +93,120 @@ class Snipper(QtWidgets.QWidget):
         processImage(shot)
         QtWidgets.QApplication.quit()
 
+def decode_predictions(scores, geometry):
+    (numRows, numCols) = scores.shape[2:4]
+    rects = []
+    confidences = []
+    minConfidence = 0.5
+
+    for y in range(0, numRows):
+        scoresData = scores[0, 0, y]
+        xData0 = geometry[0, 0, y]
+        xData1 = geometry[0, 1, y]
+        xData2 = geometry[0, 2, y]
+        xData3 = geometry[0, 3, y]
+        anglesData = geometry[0, 4, y]
+
+        for x in range(0, numCols):
+            if scoresData[x] < minConfidence:
+                continue
+
+            (offsetX, offsetY) = (x * 4.0, y * 4.0)
+
+            angle = anglesData[x]
+            cos = np.cos(angle)
+            sin = np.sin(angle)
+
+            h = xData0[x] + xData2[x]
+            w = xData1[x] + xData3[x]
+
+            endX = int(offsetX + (cos * xData1[x]) + (sin * xData2[x]))
+            endY = int(offsetY - (sin * xData1[x]) + (cos * xData2[x]))
+            startX = int(endX - w)
+            startY = int(endY - h)
+
+            rects.append((startX, startY, endX, endY))
+            confidences.append(scoresData[x])
+
+    return (rects, confidences)
+
+def preProcess(img):
+    ori = img.copy()
+    (oriH, oriW) = img.shape[:2]
+
+    (newH, newW) = (320, 320)
+    rW = oriW / float(newW)
+    rH = oriH / float(newH)
+
+    img = cv2.resize(img, (newW, newH))
+    (H, W) = img.shape[:2]
+
+    layerNames = [
+        "feature_fusion/Conv_7/Sigmoid",
+        "feature_fusion/concat_3"
+    ]
+
+    net = cv2.dnn.readNet('./frozen_east_text_detection.pb')
+    blob = cv2.dnn.blobFromImage(img, 1.0, (W, H), (123.68, 116.78, 103.94), swapRB = True, crop = False)
+    net.setInput(blob)
+    (scores, geometry) = net.forward(layerNames)
+
+    (rects, confidences) = decode_predictions(scores, geometry)
+    boxes = non_max_suppression(np.array(rects), probs = confidences)
+
+    results = []
+    for (startX, startY, endX, endY) in boxes:
+        startX = int(startX * rW)
+        startY = int(startY * rH)
+        endX = int(endX * rW)
+        endY = int(endY * rH)
+
+        dX = int((endX - startX) * args["padding"])
+        dY = int((endY - startY) * args["padding"])
+        startX = max(0, startX - dX)
+        startY = max(0, startY - dY)
+        endX = min(oriW, endX + (dX * 2))
+        endY = min(oriH, endY + (dY * 2))
+
+        roi = ori[startY:endY, startX:endX]
+
+        config = ("--oem 1 --psm 7")
+        text = pytesseract.image_to_string(roi, lang = args["language"], config = config)
+
+        results.append(((startX, startY, endX, endY), text))
+
+    results = sorted(results, key = lambda r:r[0][1])
+
+    texts = ""
+    for ((startX, startY, endX, endY), text) in results:
+        texts += text + ' '
+
+    return texts
+
 
 def processImage(img):
     buffer = QtCore.QBuffer()
     buffer.open(QtCore.QBuffer.ReadWrite)
     img.save(buffer, "PNG")
     pil_img = Image.open(io.BytesIO(buffer.data()))
+    cv_img = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGB2BGR)
     buffer.close()
 
+
     try:
-        result = pytesseract.image_to_string(
-            pil_img, timeout=5, lang=(sys.argv[1] if len(sys.argv) > 1 else None)
-        )
+        if args["scene"] == 0:
+            texts = pytesseract.image_to_string(pil_img, lang = args["language"])
+        elif args["scene"] == 1:
+            texts = preProcess(cv_img)
     except RuntimeError as error:
         print(f"ERROR: An error occurred when trying to process the image: {error}")
         notify(f"An error occurred when trying to process the image: {error}")
         return
 
-    if result:
-        pyperclip.copy(result)
-        print(f'INFO: Copied "{result}" to the clipboard')
-        notify(f'Copied "{result}" to the clipboard')
+    if texts:
+        pyperclip.copy(texts)
+        print(f'INFO: Copied "{texts}" to the clipboard')
+        notify(f'Copied "{texts}" to the clipboard')
     else:
         print(f"INFO: Unable to read text from image, did not copy")
         notify(f"Unable to read text from image, did not copy")
