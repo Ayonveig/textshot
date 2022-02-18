@@ -17,17 +17,17 @@ Running `textshot.py` with `python`/`python3` will open an overlay over the scre
 
 An optional command line argument can specify the language. For example, ~~`python textshot.py eng+fra`~~ `python textshot.py -l eng+fra` will use English as the primary language and French as the secondary language. The default is ~~`eng`~~ `eng+chi_sim` (English and Chinese Simplified). Make sure that the appropriate data files for Tesseract are installed for other languages. A list of all supported languages can be found [here](https://github.com/tesseract-ocr/tesseract/blob/master/doc/tesseract.1.asc#languages-and-scripts).
 
-<u>
+---
+
 此外，为了解决原项目难以识别自然场景图片中的文字的问题，使用了OpenCV EAST文本检测器执行文本检测，该模型是一个高度准确的深度学习文本检测器，可用于检测自然场景图像中的文本。新增了两个命令行参数：
-</u>
 
-<u>
-
-+ `-s 0/1`: scene默认为0，即原项目的标准情景下。1则为自然场景。
++ `-s 1`: scene默认为0，即原项目的标准情景下。1则为自然场景。
 
 + `-p 0.02`: padding默认为0.0，即对用OpenCV提取的ROI不进行填充。如果识别效果不好，可以尝试修改padding。
 
-</u>
+所以如果用到自然场景图片的文字识别，则需要[下载](https://github.com/Ayonveig/pycv-training/blob/main/7.text_detection/frozen_east_text_detection.pb)EAST的预训练模型，把他放到同一目录中。
+
+---
 
 It is recommended to attach a global hotkey to this tool so you can run it without opening a console and typing in the command.
 
@@ -45,7 +45,7 @@ The process on other operating systems can be found by searching how to run a sh
 - Install [Google's Tesseract OCR Engine](https://github.com/tesseract-ocr/tesseract), and ensure that `tesseract` can be reached from the command line by adding the directory to your system path.
 - `python textshot.py`
 
-Max users: You may need to give permission to capture the screen. You can do so by going to System Preferences > Security & Privacy > Privacy > Screen Recording, then checking the box for Terminal/iTerm.
-Linux users: If the text shows up correctly in the notification, but you cannot paste it, install `xclip` (e.g. with `sudo apt install xclip`).
+**Mac users:**  You may need to give permission to capture the screen. You can do so by going to System Preferences > Security & Privacy > Privacy > Screen Recording, then checking the box for Terminal/iTerm.  
+**Linux users:** If the text shows up correctly in the notification, but you cannot paste it, install `xclip` (e.g. with `sudo apt install xclip`).
 
 @rigred has added this to the AUR, so Arch Linux users can install the package `textshot-git` with their AUR helper. For example, `yay -S textshot-git`. This may not be up to date, so if you encounter issues, use the normal installation method above.
